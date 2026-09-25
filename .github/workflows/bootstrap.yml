@@ -1,0 +1,50 @@
+name: Bootstrap WorshipScore source
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "bootstrap/WorshipScore_v0.19.zip"
+      - ".github/workflows/bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Unpack WorshipScore source bundle
+        run: |
+          set -euxo pipefail
+          rm -rf /tmp/worshipscore-src
+          mkdir -p /tmp/worshipscore-src
+          unzip -q bootstrap/WorshipScore_v0.19.zip -d /tmp/worshipscore-src
+
+          ROOT="/tmp/worshipscore-src/WorshipScore_AndroidStudio_v0.19_BUILD_ZERO_PASS"
+          test -f "$ROOT/settings.gradle.kts"
+          test -d "$ROOT/app"
+
+          rsync -a --delete-excluded \
+            --exclude ".git/" \
+            "$ROOT/" ./
+
+          rm -rf bootstrap
+          rm -f .github/workflows/bootstrap.yml
+
+      - name: Commit expanded Android project
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Expand WorshipScore v0.19 Android project"
+          git push origin HEAD:main
