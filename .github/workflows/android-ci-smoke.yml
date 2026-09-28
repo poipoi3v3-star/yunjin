@@ -1,0 +1,81 @@
+name: WorshipScore Android CI Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+      - "app/build.gradle.kts"
+      - "app/src/main/AndroidManifest.xml"
+      - ".github/workflows/android-ci-smoke.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate smoke MainActivity
+        shell: bash
+        run: |
+          mkdir -p app/src/main/java/com/worshipscore/app
+          cat > app/src/main/java/com/worshipscore/app/MainActivity.kt <<'KOTLIN'
+          package com.worshipscore.app
+
+          import android.app.Activity
+          import android.os.Bundle
+          import android.widget.TextView
+
+          class MainActivity : Activity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val view = TextView(this)
+                  view.text = "WorshipScore Android CI"
+                  view.textSize = 24f
+                  setContentView(view)
+              }
+          }
+          KOTLIN
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-37" "build-tools;36.0.0" "platform-tools"
+
+      - name: Set up Gradle 9.6
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Show Gradle version
+        run: gradle --version
+
+      - name: Assemble debug
+        run: gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee assemble-debug.log
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorshipScore-ci-smoke-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorshipScore-ci-smoke-log
+          path: assemble-debug.log
+          if-no-files-found: warn
