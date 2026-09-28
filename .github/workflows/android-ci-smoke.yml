@@ -64,7 +64,7 @@ jobs:
         run: gradle --version
 
       - name: Assemble debug
-        run: gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee assemble-debug.log
+        run: gradle -Dorg.gradle.jvmargs=-Xmx4g assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -73,10 +73,3 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: WorshipScore-ci-smoke-log
-          path: assemble-debug.log
-          if-no-files-found: warn
